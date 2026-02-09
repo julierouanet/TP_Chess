@@ -50,5 +50,16 @@ pipeline {
                 }
             }
         }
+        stage('Deploy') {
+            environment {
+                NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
+            }
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'node node_modules/netlify-cli/bin/run.js deploy --prod --site chessprojet.netlify.app --dir dist'
+            }
+        }
     }
 }
