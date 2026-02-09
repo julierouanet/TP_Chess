@@ -50,6 +50,21 @@ pipeline {
                 }
             }
         }
+        stage('docker') {
+            agent any
+            when { branch 'main' }
+            environment {
+                CI_REGISTRY = 'ghcr.io'
+                CI_REGISTRY_USER = 'julierouanet'
+                CI_REGISTRY_IMAGE = "${CI_REGISTRY}/${CI_REGISTRY_USER}/tp_chess"
+                CI_REGISTRY_PASSWORD = credentials('CI_REGISTRY_PASSWORD')
+            }
+            steps {
+                sh 'docker build -t --network=host $CI_REGISTRY_IMAGE .'
+                sh 'docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY'
+                sh 'docker push $CI_REGISTRY_IMAGE'
+            }
+        }
         stage('Deploy') {
             environment {
                 NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
