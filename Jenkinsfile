@@ -1,16 +1,25 @@
 pipeline {
-    agent { docker {
-        image 'mcr.microsoft.com/playwright:v1.58.2-noble'
-        args '--network=host'
-    } }
+    agent none
     stages {
         stage('Build') {
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.58.2-noble'
+                    args '--network=host'
+                }
+            }
             steps {
                 sh 'npm install'
                 sh 'npm run build'
             }
         }
         stage('Unit Tests') {
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.58.2-noble'
+                    args '--network=host'
+                }
+            }
             steps {
                 sh 'npm run test'
             }
@@ -31,6 +40,12 @@ pipeline {
             }
         }
         stage('UI Tests') {
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.58.2-noble'
+                    args '--network=host'
+                }
+            }
             steps {
                 sh 'npm run test:e2e'
             }
@@ -60,12 +75,18 @@ pipeline {
                 CI_REGISTRY_PASSWORD = credentials('CI_REGISTRY_PASSWORD')
             }
             steps {
-                sh 'docker build -t --network=host $CI_REGISTRY_IMAGE .'
-                sh 'docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY'
+                sh 'docker build --network=host -t $CI_REGISTRY_IMAGE .'
+                sh 'echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY'
                 sh 'docker push $CI_REGISTRY_IMAGE'
             }
         }
         stage('Deploy') {
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.58.2-noble'
+                    args '--network=host'
+                }
+            }
             environment {
                 NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
             }
