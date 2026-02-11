@@ -70,6 +70,12 @@ test.describe('ChessBoard Component', () => {
         const title = page.locator('h1');
         await expect(title).toContainText("Jeu d'Échecs");
     });
+
+    test('should display game status', async ({ page }) => {
+        const status = page.locator('.game-status');
+        await expect(status).toBeVisible();
+        await expect(status).toContainText('Blancs');
+    });
 });
 
 test.describe('ChessBoard Drag and Drop', () => {
@@ -87,7 +93,7 @@ test.describe('ChessBoard Drag and Drop', () => {
         await expect(pawn).toHaveAttribute('draggable', 'true');
     });
 
-    test('should move a piece when drag and drop', async ({ page }) => {
+    test('should move a piece when drag and drop (legal move)', async ({ page }) => {
         // Get the source square (e2 - white pawn)
         const sourceSquare = page.locator('.board-row').nth(6).locator('.square').nth(4);
         const targetSquare = page.locator('.board-row').nth(4).locator('.square').nth(4);
@@ -96,7 +102,7 @@ test.describe('ChessBoard Drag and Drop', () => {
         const pawn = sourceSquare.locator('.chess-piece');
         await expect(pawn).toBeVisible();
 
-        // Perform drag and drop
+        // Perform drag and drop (e2 to e4 - legal move)
         await pawn.dragTo(targetSquare);
 
         // Verify pawn moved to target
@@ -108,8 +114,8 @@ test.describe('ChessBoard Drag and Drop', () => {
         await expect(sourcePawn).toHaveCount(0);
     });
 
-    test('should update move history after a move', async ({ page }) => {
-        // Move a pawn
+    test('should update move history after a legal move', async ({ page }) => {
+        // Move a pawn (e2 to e4 - legal move)
         const sourceSquare = page.locator('.board-row').nth(6).locator('.square').nth(4);
         const targetSquare = page.locator('.board-row').nth(4).locator('.square').nth(4);
 
@@ -124,16 +130,27 @@ test.describe('ChessBoard Drag and Drop', () => {
         await expect(page.locator('.no-moves')).toHaveCount(0);
     });
 
-    test('should capture piece when moving to occupied square', async ({ page }) => {
-        // Move white pawn directly to black pawn position (capture)
-        const whitePawnSquare = page.locator('.board-row').nth(6).locator('.square').nth(0);
-        const blackPawnSquare = page.locator('.board-row').nth(1).locator('.square').nth(0);
+    test('should capture piece with a legal capture move', async ({ page }) => {
+        // Play a legal sequence to capture: e2-e4, d7-d5, e4xd5
 
-        const whitePawn = whitePawnSquare.locator('.chess-piece');
-        await whitePawn.dragTo(blackPawnSquare);
+        // 1. White: e2 to e4
+        const e2Square = page.locator('.board-row').nth(6).locator('.square').nth(4);
+        const e4Square = page.locator('.board-row').nth(4).locator('.square').nth(4);
+        const whitePawn = e2Square.locator('.chess-piece');
+        await whitePawn.dragTo(e4Square);
+
+        // 2. Black: d7 to d5
+        const d7Square = page.locator('.board-row').nth(1).locator('.square').nth(3);
+        const d5Square = page.locator('.board-row').nth(3).locator('.square').nth(3);
+        const blackPawn = d7Square.locator('.chess-piece');
+        await blackPawn.dragTo(d5Square);
+
+        // 3. White: e4 captures d5
+        const e4Pawn = e4Square.locator('.chess-piece');
+        await e4Pawn.dragTo(d5Square);
 
         // Verify only white piece is in target square (replaced black)
-        const targetPiece = blackPawnSquare.locator('.chess-piece');
+        const targetPiece = d5Square.locator('.chess-piece');
         await expect(targetPiece).toHaveCount(1);
         await expect(targetPiece).toHaveClass(/white/);
 
@@ -143,15 +160,41 @@ test.describe('ChessBoard Drag and Drop', () => {
     });
 
     test('should have 31 pieces after one capture', async ({ page }) => {
-        // Perform a capture
-        const whitePawnSquare = page.locator('.board-row').nth(6).locator('.square').nth(0);
-        const blackPawnSquare = page.locator('.board-row').nth(1).locator('.square').nth(0);
+        // Play a legal capture sequence: e2-e4, d7-d5, e4xd5
 
-        const whitePawn = whitePawnSquare.locator('.chess-piece');
-        await whitePawn.dragTo(blackPawnSquare);
+        // 1. White: e2 to e4
+        const e2Square = page.locator('.board-row').nth(6).locator('.square').nth(4);
+        const e4Square = page.locator('.board-row').nth(4).locator('.square').nth(4);
+        await e2Square.locator('.chess-piece').dragTo(e4Square);
+
+        // 2. Black: d7 to d5
+        const d7Square = page.locator('.board-row').nth(1).locator('.square').nth(3);
+        const d5Square = page.locator('.board-row').nth(3).locator('.square').nth(3);
+        await d7Square.locator('.chess-piece').dragTo(d5Square);
+
+        // 3. White: e4xd5
+        await e4Square.locator('.chess-piece').dragTo(d5Square);
 
         // Total pieces should be 31 after capture
         const allPieces = page.locator('.chess-piece');
         await expect(allPieces).toHaveCount(31);
+    });
+
+    test('should reject an illegal move (piece stays in place)', async ({ page }) => {
+        // Try to move white pawn from a2 directly to a5 (illegal - 3 squares)
+        const a2Square = page.locator('.board-row').nth(6).locator('.square').nth(0);
+        const a5Square = page.locator('.board-row').nth(3).locator('.square').nth(0);
+
+        const pawn = a2Square.locator('.chess-piece');
+        await pawn.dragTo(a5Square);
+
+        // Pawn should still be in original position
+        await expect(a2Square.locator('.chess-piece')).toHaveCount(1);
+        // Target should still be empty
+        await expect(a5Square.locator('.chess-piece')).toHaveCount(0);
+
+        // Still 32 pieces on the board
+        const allPieces = page.locator('.chess-piece');
+        await expect(allPieces).toHaveCount(32);
     });
 });

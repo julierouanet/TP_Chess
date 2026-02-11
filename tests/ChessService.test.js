@@ -80,8 +80,8 @@ describe('ChessService', () => {
     });
 
     describe('movePiece', () => {
-        it('should move a piece to an empty square', () => {
-            // Move white pawn from e2 to e4
+        it('should move a piece to an empty square (legal move)', () => {
+            // Move white pawn from e2 to e4 (legal opening move)
             const result = service.movePiece(6, 4, 4, 4);
 
             expect(result).toBe(true);
@@ -89,14 +89,28 @@ describe('ChessService', () => {
             expect(service.getPieceAt(4, 4)).toEqual({ type: 'pawn', color: 'white' });
         });
 
-        it('should replace a piece when moving to an occupied square', () => {
-            // Move white pawn to capture black pawn position
-            // First move pawn forward
-            service.movePiece(6, 0, 1, 0);
+        it('should reject an illegal move', () => {
+            // Try to move white pawn from e2 to e5 (3 squares - illegal)
+            const result = service.movePiece(6, 4, 3, 4);
 
-            // Verify white pawn replaced black pawn
-            expect(service.getPieceAt(1, 0)).toEqual({ type: 'pawn', color: 'white' });
-            expect(service.getPieceAt(6, 0)).toBeNull();
+            expect(result).toBe(false);
+            // Piece should remain in original position
+            expect(service.getPieceAt(6, 4)).toEqual({ type: 'pawn', color: 'white' });
+            expect(service.getPieceAt(3, 4)).toBeNull();
+        });
+
+        it('should capture a piece with a legal move', () => {
+            // Play a sequence of legal moves to reach a capture:
+            // 1. e2-e4 (white pawn)
+            service.movePiece(6, 4, 4, 4);
+            // 2. d7-d5 (black pawn)
+            service.movePiece(1, 3, 3, 3);
+            // 3. e4xd5 (white captures black pawn)
+            const result = service.movePiece(4, 4, 3, 3);
+
+            expect(result).toBe(true);
+            expect(service.getPieceAt(3, 3)).toEqual({ type: 'pawn', color: 'white' });
+            expect(service.getPieceAt(4, 4)).toBeNull();
         });
 
         it('should return false when trying to move from an empty square', () => {
@@ -105,12 +119,29 @@ describe('ChessService', () => {
         });
 
         it('should record captured piece in move history', () => {
-            // Move white pawn to black pawn position (capture)
-            service.movePiece(6, 0, 1, 0);
+            // Play a legal capture sequence
+            service.movePiece(6, 4, 4, 4); // e2-e4
+            service.movePiece(1, 3, 3, 3); // d7-d5
+            service.movePiece(4, 4, 3, 3); // e4xd5
 
             const history = service.getMoveHistory();
-            expect(history).toHaveLength(1);
-            expect(history[0].captured).toEqual({ type: 'pawn', color: 'black' });
+            expect(history).toHaveLength(3);
+            expect(history[2].captured).toEqual({ type: 'pawn', color: 'black' });
+        });
+
+        it('should enforce turn order (white moves first)', () => {
+            // Try to move a black piece first - should fail
+            const result = service.movePiece(1, 4, 3, 4); // e7-e5 (black)
+            expect(result).toBe(false);
+        });
+
+        it('should alternate turns between white and black', () => {
+            // White moves
+            expect(service.movePiece(6, 4, 4, 4)).toBe(true); // e2-e4
+            // Black moves
+            expect(service.movePiece(1, 4, 3, 4)).toBe(true); // e7-e5
+            // White moves again
+            expect(service.movePiece(6, 3, 4, 3)).toBe(true); // d2-d4
         });
     });
 
@@ -139,6 +170,29 @@ describe('ChessService', () => {
             expect(history).toHaveLength(2);
             expect(history[0].piece.color).toBe('white');
             expect(history[1].piece.color).toBe('black');
+        });
+    });
+
+    describe('game state', () => {
+        it('should start with white to move', () => {
+            expect(service.turn()).toBe('white');
+        });
+
+        it('should not be in check at start', () => {
+            expect(service.isCheck()).toBe(false);
+        });
+
+        it('should not be game over at start', () => {
+            expect(service.isGameOver()).toBe(false);
+        });
+
+        it('should report correct status at start', () => {
+            expect(service.getStatus()).toBe('Au tour des Blancs');
+        });
+
+        it('should switch turn after a move', () => {
+            service.movePiece(6, 4, 4, 4); // e2-e4
+            expect(service.turn()).toBe('black');
         });
     });
 

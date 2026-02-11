@@ -2,7 +2,7 @@
   <div class="app">
     <header class="app-header">
       <h1>♔ Jeu d'Échecs ♚</h1>
-      <p class="subtitle">Déplacez les pièces librement</p>
+      <p class="subtitle">Respecte les règles officielles du jeu d'échecs</p>
     </header>
 
     <main class="game-container">

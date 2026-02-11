@@ -1,5 +1,8 @@
 <template>
   <div class="chessboard-container">
+    <div class="game-status" :class="statusClass">
+      {{ gameStatus }}
+    </div>
     <div class="chessboard" v-if="board.length > 0">
       <!-- Column labels (top) -->
       <div class="column-labels">
@@ -39,16 +42,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import ChessPiece from './ChessPiece.vue';
 import { chessService } from '../services/ChessService';
 
-const emit = defineEmits(['move']);
+const emit = defineEmits(['move', 'status']);
 
 const board = ref(chessService.getBoard());
+const gameStatus = ref(chessService.getStatus());
+
+const statusClass = computed(() => {
+  if (chessService.isCheckmate()) return 'checkmate';
+  if (chessService.isCheck()) return 'check';
+  if (chessService.isDraw() || chessService.isStalemate()) return 'draw';
+  return chessService.turn() === 'white' ? 'white-turn' : 'black-turn';
+});
 
 const loadBoard = () => {
   board.value = chessService.getBoard();
+  gameStatus.value = chessService.getStatus();
 };
 
 const getSquareClass = (row, col) => {
@@ -80,6 +92,7 @@ const onDrop = (event, toRow, toCol) => {
     if (success) {
       loadBoard();
       emit('move', chessService.getMoveHistory());
+      emit('status', gameStatus.value);
     }
   } catch (e) {
     console.error('Error processing drop:', e);
@@ -90,9 +103,58 @@ const onDrop = (event, toRow, toCol) => {
 <style scoped>
 .chessboard-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   padding: 20px;
+}
+
+.game-status {
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 10px 24px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  text-align: center;
+  min-width: 250px;
+  transition: all 0.3s ease;
+}
+
+.game-status.white-turn {
+  background: rgba(240, 217, 181, 0.2);
+  color: #f0d9b5;
+  border: 2px solid #f0d9b5;
+}
+
+.game-status.black-turn {
+  background: rgba(30, 30, 30, 0.5);
+  color: #b58863;
+  border: 2px solid #b58863;
+}
+
+.game-status.check {
+  background: rgba(255, 165, 0, 0.3);
+  color: #ffa500;
+  border: 2px solid #ffa500;
+  animation: pulse 1s infinite;
+}
+
+.game-status.checkmate {
+  background: rgba(220, 53, 69, 0.3);
+  color: #ff4444;
+  border: 2px solid #ff4444;
+  font-size: 1.4rem;
+}
+
+.game-status.draw {
+  background: rgba(108, 117, 125, 0.3);
+  color: #adb5bd;
+  border: 2px solid #adb5bd;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .chessboard {
